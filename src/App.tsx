@@ -1,5 +1,5 @@
+
 import { useEffect, useMemo, useState } from "react";
-import logo from "./assets/logo.png"; // ✅ make sure your PNG is at src/assets/logo.png
 
 type Discipline = "Pole" | "Hoop" | "Bungee" | "Silks" | "Other";
 
@@ -107,10 +107,9 @@ export default function App() {
     };
     for (const s of sessions) by[s.discipline]++;
 
+    // Sessions in last 7 days
     const now = Date.now();
-    const week = sessions.filter(
-      (s) => now - s.createdAt < 7 * 24 * 60 * 60 * 1000
-    ).length;
+    const week = sessions.filter((s) => now - s.createdAt < 7 * 24 * 60 * 60 * 1000).length;
 
     return { total, week, by };
   }, [sessions]);
@@ -146,17 +145,7 @@ export default function App() {
     <>
       <div className="container">
         <header className="appbar">
-          {/* ✅ Logo + Title */}
-          
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-           <img
-             src={logo}
-              alt="Logo"
-              style={{ height: 32, width: "auto" }}
-            />
-            <div className="title">Aerial Journey</div>
-          </div>
-
+          <div className="title">Aerial Journey</div>
           <div className="subtitle">
             {tab === "sessions"
               ? "Log sessions and track momentum"
@@ -216,10 +205,8 @@ export default function App() {
               </div>
 
               <div className="hint">
-                <strong>Quick stats:</strong> {stats.week} sessions in the last 7
-                days • {stats.total} total
+                <strong>Quick stats:</strong> {stats.week} sessions in the last 7 days • {stats.total} total
               </div>
-
               <div className="hint">
                 {Object.entries(stats.by)
                   .filter(([, n]) => n > 0)
@@ -236,8 +223,7 @@ export default function App() {
               <div className="card">
                 <div className="sectionTitle">Nothing logged yet</div>
                 <div className="hint">
-                  Start small: log today’s session with one sentence. Consistency
-                  beats perfection.
+                  Start small: log today’s session with one sentence. Consistency beats perfection.
                 </div>
               </div>
             ) : (
@@ -265,8 +251,7 @@ export default function App() {
             )}
 
             <div className="hint" style={{ marginTop: 16 }}>
-              Saved on this device only. Later we can add accounts so it syncs
-              across phones.
+              Saved on this device only. Later we can add accounts so it syncs across phones.
             </div>
           </>
         )}
@@ -275,8 +260,8 @@ export default function App() {
           <div className="card">
             <h2 className="sectionTitle">Skills (next)</h2>
             <p className="hint">
-              Next we’ll add a skill library per discipline and let you mark
-              skills as <strong>Learning / Achieved / Mastered</strong>.
+              Next we’ll add a skill library per discipline and let you mark skills as
+              <strong> Learning / Achieved / Mastered</strong>.
             </p>
           </div>
         )}
@@ -285,8 +270,7 @@ export default function App() {
           <div className="card">
             <h2 className="sectionTitle">Goals (next)</h2>
             <p className="hint">
-              Next we’ll add simple goals like “Invert by June” with optional
-              target dates.
+              Next we’ll add simple goals like “Invert by June” with optional target dates.
             </p>
           </div>
         )}
