@@ -1,4 +1,5 @@
 
+
 import { useEffect, useMemo, useState } from "react";
 
 type Discipline = "Pole" | "Hoop" | "Bungee" | "Silks" | "Other";
@@ -32,6 +33,20 @@ type Goal = {
   achievedAt?: number;
 };
 
+type SkillStatus = "learning" | "achieved" | "mastered";
+
+type Skill = {
+  id: string;
+  discipline: Discipline;
+  title: string;
+  notes?: string;
+  status: SkillStatus;
+  createdAt: number;
+  updatedAt: number;
+  achievedAt?: number;
+  masteredAt?: number;
+};
+
 type Tab = "sessions" | "skills" | "goals";
 
 const SESSIONS_KEY = "aerial_fitness_sessions_v2";
@@ -41,7 +56,11 @@ const GOALS_KEY_V3 = "aerial_fitness_goals_v3"; // ✅ multi-discipline + progre
 const GOALS_KEY_V2 = "aerial_fitness_goals_v2"; // single discipline
 const GOALS_KEY_V1 = "aerial_fitness_goals_v1"; // no discipline
 
+// ✅ Skills storage
+const SKILLS_KEY_V1 = "aerial_fitness_skills_v1";
+
 const ALL_DISCIPLINES: Discipline[] = ["Pole", "Hoop", "Bungee", "Silks", "Other"];
+const ALL_SKILL_STATUSES: SkillStatus[] = ["learning", "achieved", "mastered"];
 
 function todayISODate() {
   const d = new Date();
@@ -57,6 +76,10 @@ function makeId() {
 
 function isDiscipline(x: any): x is Discipline {
   return x === "Pole" || x === "Hoop" || x === "Bungee" || x === "Silks" || x === "Other";
+}
+
+function isSkillStatus(x: any): x is SkillStatus {
+  return x === "learning" || x === "achieved" || x === "mastered";
 }
 
 function safeParseArray(raw: string | null) {
@@ -87,6 +110,32 @@ function disciplineEmoji(d: Discipline) {
       return "🧣";
     default:
       return "✨";
+  }
+}
+
+function skillStatusLabel(s: SkillStatus) {
+  switch (s) {
+    case "learning":
+      return "Learning";
+    case "achieved":
+      return "Achieved";
+    case "mastered":
+      return "Mastered";
+    default:
+      return "Learning";
+  }
+}
+
+function skillStatusEmoji(s: SkillStatus) {
+  switch (s) {
+    case "learning":
+      return "🌱";
+    case "achieved":
+      return "✅";
+    case "mastered":
+      return "🏆";
+    default:
+      return "🌱";
   }
 }
 
@@ -242,8 +291,8 @@ export default function App() {
             typeof x.progress === "number"
               ? clampInt(x.progress, 0, 100)
               : status === "achieved"
-              ? 100
-              : 0;
+                ? 100
+                : 0;
 
           return {
             id: typeof x.id === "string" ? x.id : makeId(),
@@ -417,15 +466,16 @@ export default function App() {
   const goalsFiltered = useMemo(() => goals.filter(goalMatchesFilter), [goals, goalFilter]);
 
   const goalsActive = useMemo(
-    () => goalsFiltered.filter((g) => g.status === "active").sort((a, b) => {
-      // Active: soonest target date first (if both have), otherwise newest updated first
-      const ad = a.targetDate || "";
-      const bd = b.targetDate || "";
-      if (ad && bd) return ad.localeCompare(bd);
-      if (ad && !bd) return -1;
-      if (!ad && bd) return 1;
-      return b.updatedAt - a.updatedAt;
-    }),
+    () =>
+      goalsFiltered.filter((g) => g.status === "active").sort((a, b) => {
+        // Active: soonest target date first (if both have), otherwise newest updated first
+        const ad = a.targetDate || "";
+        const bd = b.targetDate || "";
+        if (ad && bd) return ad.localeCompare(bd);
+        if (ad && !bd) return -1;
+        if (!ad && bd) return 1;
+        return b.updatedAt - a.updatedAt;
+      }),
     [goalsFiltered]
   );
 
@@ -462,6 +512,159 @@ export default function App() {
     return by;
   }, [goals]);
 
+  /* ------------------------------ SKILLS ------------------------------ */
+
+  const [skills, setSkills] = useState<Skill[]>([]);
+
+  // Skill form
+  const [skillDiscipline, setSkillDiscipline] = useState<Discipline>("Pole");
+  const [skillTitle, setSkillTitle] = useState<string>("");
+  const [skillNotes, setSkillNotes] = useState<string>("");
+  const [skillStatus, setSkillStatus] = useState<SkillStatus>("learning");
+
+  // Filters
+  const [skillFilterDiscipline, setSkillFilterDiscipline] = useState<Discipline | "All">("All");
+  const [skillFilterStatus, setSkillFilterStatus] = useState<SkillStatus | "All">("All");
+
+  // Load skills
+  useEffect(() => {
+    const parsed = safeParseArray(localStorage.getItem(SKILLS_KEY_V1));
+    if (!parsed) return;
+
+    const cleaned: Skill[] = parsed
+      .filter((x) => x && typeof x === "object")
+      .map((x: any) => {
+        const status: SkillStatus = isSkillStatus(x.status) ? x.status : "learning";
+        const now = Date.now();
+
+        return {
+          id: typeof x.id === "string" ? x.id : makeId(),
+          discipline: isDiscipline(x.discipline) ? x.discipline : "Other",
+          title: typeof x.title === "string" ? x.title : "Untitled skill",
+          notes: typeof x.notes === "string" ? x.notes : undefined,
+          status,
+          createdAt: typeof x.createdAt === "number" ? x.createdAt : now,
+          updatedAt: typeof x.updatedAt === "number" ? x.updatedAt : now,
+          achievedAt: typeof x.achievedAt === "number" ? x.achievedAt : undefined,
+          masteredAt: typeof x.masteredAt === "number" ? x.masteredAt : undefined,
+        };
+      });
+
+    setSkills(cleaned);
+  }, []);
+
+  // Save skills
+  useEffect(() => {
+    try {
+      localStorage.setItem(SKILLS_KEY_V1, JSON.stringify(skills));
+    } catch (err) {
+      console.warn("Could not save skills:", err);
+    }
+  }, [skills]);
+
+  function addSkill() {
+    const title = skillTitle.trim();
+    if (!title) return;
+
+    const now = Date.now();
+    const status = skillStatus;
+
+    const newSkill: Skill = {
+      id: makeId(),
+      discipline: skillDiscipline,
+      title,
+      notes: skillNotes.trim() ? skillNotes.trim() : undefined,
+      status,
+      createdAt: now,
+      updatedAt: now,
+      achievedAt: status === "achieved" || status === "mastered" ? now : undefined,
+      masteredAt: status === "mastered" ? now : undefined,
+    };
+
+    setSkills((prev) => [newSkill, ...prev]);
+    setSkillTitle("");
+    setSkillNotes("");
+    setSkillStatus("learning");
+  }
+
+  function deleteSkill(id: string) {
+    setSkills((prev) => prev.filter((s) => s.id !== id));
+  }
+
+  function clearAllSkills() {
+    const ok = confirm("Delete ALL saved skills on this device?");
+    if (!ok) return;
+    setSkills([]);
+    localStorage.removeItem(SKILLS_KEY_V1);
+  }
+
+  function setSkillStatusById(id: string, next: SkillStatus) {
+    const now = Date.now();
+    setSkills((prev) =>
+      prev.map((s) => {
+        if (s.id !== id) return s;
+
+        // preserve first achieved/mastered timestamps once set
+        const achievedAt =
+          next === "learning" ? undefined : s.achievedAt ?? now;
+        const masteredAt =
+          next === "mastered" ? s.masteredAt ?? now : undefined;
+
+        return {
+          ...s,
+          status: next,
+          achievedAt,
+          masteredAt,
+          updatedAt: now,
+        };
+      })
+    );
+  }
+
+  function skillMatchesFilter(s: Skill) {
+    if (skillFilterDiscipline !== "All" && s.discipline !== skillFilterDiscipline) return false;
+    if (skillFilterStatus !== "All" && s.status !== skillFilterStatus) return false;
+    return true;
+  }
+
+  const skillsFiltered = useMemo(
+    () => skills.filter(skillMatchesFilter),
+    [skills, skillFilterDiscipline, skillFilterStatus]
+  );
+
+  const skillsSorted = useMemo(() => {
+    const rank: Record<SkillStatus, number> = { learning: 0, achieved: 1, mastered: 2 };
+    return [...skillsFiltered].sort((a, b) => {
+      const ra = rank[a.status];
+      const rb = rank[b.status];
+      if (ra !== rb) return ra - rb; // learning -> achieved -> mastered
+      return b.updatedAt - a.updatedAt; // newest updated first inside each group
+    });
+  }, [skillsFiltered]);
+
+  const skillsStats = useMemo(() => {
+    const total = skills.length;
+    const learning = skills.filter((s) => s.status === "learning").length;
+    const achieved = skills.filter((s) => s.status === "achieved").length;
+    const mastered = skills.filter((s) => s.status === "mastered").length;
+    return { total, learning, achieved, mastered };
+  }, [skills]);
+
+  const skillsByDiscipline = useMemo(() => {
+    const by: Record<Discipline, { learning: number; achieved: number; mastered: number }> = {
+      Pole: { learning: 0, achieved: 0, mastered: 0 },
+      Hoop: { learning: 0, achieved: 0, mastered: 0 },
+      Bungee: { learning: 0, achieved: 0, mastered: 0 },
+      Silks: { learning: 0, achieved: 0, mastered: 0 },
+      Other: { learning: 0, achieved: 0, mastered: 0 },
+    };
+
+    for (const s of skills) {
+      by[s.discipline][s.status]++;
+    }
+    return by;
+  }, [skills]);
+
   /* ------------------------------ UI ------------------------------ */
 
   return (
@@ -473,8 +676,8 @@ export default function App() {
             {tab === "sessions"
               ? "Log sessions and track momentum"
               : tab === "skills"
-              ? "Skills (coming next)"
-              : "Multi-discipline goals with progress tracking"}
+                ? "Track skills by status (Learning → Achieved → Mastered)"
+                : "Multi-discipline goals with progress tracking"}
           </div>
         </header>
 
@@ -582,6 +785,212 @@ export default function App() {
           </>
         )}
 
+        {/* -------------------------- SKILLS TAB -------------------------- */}
+        {tab === "skills" && (
+          <>
+            <div className="card">
+              <h2 className="sectionTitle">Add a skill</h2>
+
+              <div className="row">
+                <div>
+                  <label className="label">Discipline</label>
+                  <select
+                    className="select"
+                    value={skillDiscipline}
+                    onChange={(e) => setSkillDiscipline(e.target.value as Discipline)}
+                  >
+                    <option value="Pole">Pole</option>
+                    <option value="Hoop">Hoop (Lyra)</option>
+                    <option value="Bungee">Bungee</option>
+                    <option value="Silks">Silks</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label">Starting status</label>
+                  <select
+                    className="select"
+                    value={skillStatus}
+                    onChange={(e) => setSkillStatus(e.target.value as SkillStatus)}
+                  >
+                    <option value="learning">Learning</option>
+                    <option value="achieved">Achieved</option>
+                    <option value="mastered">Mastered</option>
+                  </select>
+                </div>
+              </div>
+
+              <label className="label">Skill</label>
+              <input
+                className="input"
+                placeholder="e.g. Invert, Shoulder mount, Mermaid, Ayesha prep"
+                value={skillTitle}
+                onChange={(e) => setSkillTitle(e.target.value)}
+              />
+
+              <label className="label">Notes (optional)</label>
+              <textarea
+                className="textarea"
+                placeholder="Cues, progressions, what helps, what to watch for"
+                value={skillNotes}
+                onChange={(e) => setSkillNotes(e.target.value)}
+              />
+
+              <div className="actions">
+                <button className="btn btnPrimary" onClick={addSkill}>
+                  Add skill
+                </button>
+                <button className="btn" onClick={clearAllSkills}>
+                  Clear all
+                </button>
+              </div>
+
+              <div className="hint">
+                <strong>All skills:</strong> {skillsStats.learning} learning • {skillsStats.achieved} achieved •{" "}
+                {skillsStats.mastered} mastered
+              </div>
+
+              <div className="hint">
+                {Object.entries(skillsByDiscipline)
+                  .map(([d, v]) => {
+                    const total = v.learning + v.achieved + v.mastered;
+                    return `${disciplineEmoji(d as Discipline)} ${d}: ${total} (L${v.learning}/A${v.achieved}/M${v.mastered})`;
+                  })
+                  .join("  •  ")}
+              </div>
+            </div>
+
+            <div className="card" style={{ marginTop: 12 }}>
+              <h2 className="sectionTitle">Filter</h2>
+
+              <div className="row">
+                <div>
+                  <label className="label">Discipline</label>
+                  <select
+                    className="select"
+                    value={skillFilterDiscipline}
+                    onChange={(e) => setSkillFilterDiscipline(e.target.value as Discipline | "All")}
+                  >
+                    <option value="All">All disciplines</option>
+                    <option value="Pole">Pole</option>
+                    <option value="Hoop">Hoop (Lyra)</option>
+                    <option value="Bungee">Bungee</option>
+                    <option value="Silks">Silks</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="label">Status</label>
+                  <select
+                    className="select"
+                    value={skillFilterStatus}
+                    onChange={(e) => setSkillFilterStatus(e.target.value as SkillStatus | "All")}
+                  >
+                    <option value="All">All statuses</option>
+                    <option value="learning">Learning</option>
+                    <option value="achieved">Achieved</option>
+                    <option value="mastered">Mastered</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="hint">
+                Skills are sorted by status (Learning → Achieved → Mastered), then by recently updated.
+              </div>
+            </div>
+
+            <h2 className="sectionTitle" style={{ marginTop: 18 }}>
+              Your skills
+            </h2>
+
+            {skillsSorted.length === 0 ? (
+              <div className="card">
+                <div className="sectionTitle">No skills yet for this filter</div>
+                <div className="hint">
+                  Add one skill you’re working on — then nudge it from Learning to Achieved when it clicks.
+                </div>
+              </div>
+            ) : (
+              <div className="list">
+                {skillsSorted.map((s) => (
+                  <div className="sessionCard" key={s.id}>
+                    <div className="sessionTop">
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          <span className="badge">
+                            <span aria-hidden="true">{disciplineEmoji(s.discipline)}</span>
+                            <span>{s.discipline}</span>
+                          </span>
+
+                          <span className="badge">
+                            <span aria-hidden="true">{skillStatusEmoji(s.status)}</span>
+                            <span>{skillStatusLabel(s.status)}</span>
+                          </span>
+                        </div>
+
+                        <div style={{ fontWeight: 900, marginTop: 10 }}>{s.title}</div>
+
+                        <div className="meta">
+                          Updated: {formatISOFromMs(s.updatedAt) || "—"}
+                          {s.status !== "learning" && s.achievedAt ? ` • Achieved: ${formatISOFromMs(s.achievedAt)}` : ""}
+                          {s.status === "mastered" && s.masteredAt ? ` • Mastered: ${formatISOFromMs(s.masteredAt)}` : ""}
+                        </div>
+                      </div>
+
+                      <button className="btn" onClick={() => deleteSkill(s.id)}>
+                        Delete
+                      </button>
+                    </div>
+
+                    {s.notes ? <div className="notes">{s.notes}</div> : null}
+
+                    <div style={{ marginTop: 12 }}>
+                      <div className="hint" style={{ marginBottom: 8 }}>
+                        Update status:
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                        <button
+                          className={`btn ${s.status === "learning" ? "btnPrimary" : ""}`}
+                          onClick={() => setSkillStatusById(s.id, "learning")}
+                          type="button"
+                        >
+                          🌱 Learning
+                        </button>
+                        <button
+                          className={`btn ${s.status === "achieved" ? "btnPrimary" : ""}`}
+                          onClick={() => setSkillStatusById(s.id, "achieved")}
+                          type="button"
+                        >
+                          ✅ Achieved
+                        </button>
+                        <button
+                          className={`btn ${s.status === "mastered" ? "btnPrimary" : ""}`}
+                          onClick={() => setSkillStatusById(s.id, "mastered")}
+                          type="button"
+                        >
+                          🏆 Mastered
+                        </button>
+                      </div>
+
+                      <div className="hint" style={{ marginTop: 10 }}>
+                        Tip: “Achieved” can mean you can do it on a good day. “Mastered” can mean consistent, controlled,
+                        and repeatable.
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="hint" style={{ marginTop: 16 }}>
+              Saved on this device only. Later we can sync skills across devices with accounts.
+            </div>
+          </>
+        )}
+
         {/* -------------------------- GOALS TAB -------------------------- */}
         {tab === "goals" && (
           <>
@@ -668,7 +1077,10 @@ export default function App() {
 
               <div className="hint">
                 {Object.entries(goalsByDiscipline)
-                  .map(([d, v]) => `${disciplineEmoji(d as Discipline)} ${d}: ${v.active} active, ${v.achieved} achieved`)
+                  .map(
+                    ([d, v]) =>
+                      `${disciplineEmoji(d as Discipline)} ${d}: ${v.active} active, ${v.achieved} achieved`
+                  )
                   .join("  •  ")}
               </div>
             </div>
@@ -731,7 +1143,14 @@ export default function App() {
 
                     {/* Progress UI */}
                     <div style={{ marginTop: 12 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          alignItems: "center",
+                        }}
+                      >
                         <div style={{ fontWeight: 900 }}>Progress</div>
                         <div className="meta">{g.progress}%</div>
                       </div>
@@ -768,7 +1187,14 @@ export default function App() {
                       />
 
                       {/* quick buttons */}
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10, marginTop: 10 }}>
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, 1fr)",
+                          gap: 10,
+                          marginTop: 10,
+                        }}
+                      >
                         <button className="btn" onClick={() => nudgeGoalProgress(g.id, -10)} type="button">
                           -10
                         </button>
@@ -789,9 +1215,7 @@ export default function App() {
                         </button>
                       </div>
 
-                      <div className="hint">
-                        Tip: Progress can go up or down — that’s normal. Showing up still counts.
-                      </div>
+                      <div className="hint">Tip: Progress can go up or down — that’s normal. Showing up still counts.</div>
                     </div>
                   </div>
                 ))}
@@ -855,17 +1279,6 @@ export default function App() {
             </div>
           </>
         )}
-
-        {/* -------------------------- SKILLS TAB -------------------------- */}
-        {tab === "skills" && (
-          <div className="card">
-            <h2 className="sectionTitle">Skills (next)</h2>
-            <p className="hint">
-              Next we’ll add a skill library per discipline and let you mark skills as{" "}
-              <strong>Learning / Achieved / Mastered</strong>.
-            </p>
-          </div>
-        )}
       </div>
 
       <nav className="bottomNav" role="navigation" aria-label="Bottom navigation">
@@ -882,10 +1295,7 @@ export default function App() {
           >
             Skills
           </button>
-          <button
-            className={`navBtn ${tab === "goals" ? "navBtnActive" : ""}`}
-            onClick={() => setTab("goals")}
-          >
+          <button className={`navBtn ${tab === "goals" ? "navBtnActive" : ""}`} onClick={() => setTab("goals")}>
             Goals
           </button>
         </div>
