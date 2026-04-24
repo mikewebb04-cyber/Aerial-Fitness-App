@@ -60,7 +60,6 @@ const GOALS_KEY_V1 = "aerial_fitness_goals_v1"; // no discipline
 const SKILLS_KEY_V1 = "aerial_fitness_skills_v1";
 
 const ALL_DISCIPLINES: Discipline[] = ["Pole", "Hoop", "Bungee", "Silks", "Other"];
-const ALL_SKILL_STATUSES: SkillStatus[] = ["learning", "achieved", "mastered"];
 
 function todayISODate() {
   const d = new Date();
@@ -372,7 +371,7 @@ export default function App() {
     const title = goalTitle.trim();
     if (!title) return;
 
-    const discs = goalDisciplines.length ? goalDisciplines : ["Other"];
+    const discs: Discipline[] = goalDisciplines.length ? goalDisciplines : ["Other"];
     const progress = clampInt(goalProgress, 0, 100);
 
     const newGoal: Goal = {
@@ -909,7 +908,7 @@ export default function App() {
               <div className="card">
                 <div className="sectionTitle">No skills yet for this filter</div>
                 <div className="hint">
-                  Add one skill you’re working on — then nudge it from Learning to Achieved when it clicks.
+                  Add one skill you’re working on — then nudge it from Learning to Achieved!
                 </div>
               </div>
             ) : (
@@ -1211,7 +1210,7 @@ export default function App() {
 
                       <div className="actions" style={{ marginTop: 12 }}>
                         <button className="btn btnPrimary" onClick={() => toggleGoalStatus(g.id)}>
-                          Mark achieved (sets 100%)
+                          Mark achieved
                         </button>
                       </div>
 
