@@ -2,11 +2,11 @@
 :root{
   --bg: #f6f7fb;
   --card: #ffffff;
-  --text: #0f172a;
+  --text: #2B2B2B;
   --muted: #64748b;
   --border: rgba(15, 23, 42, 0.10);
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
-  --primary: #111827;
+  --primary: #CC3366;
   --primaryText: #ffffff;
   --danger: #ef4444;
   --dangerText: #ffffff;
@@ -79,6 +79,20 @@ a { color: inherit; }
   font-size: 13px;
   color: var(--muted);
   margin-top: 4px;
+}
+
+.brand{
+  display: flex;
+  align-items: center;     /* vertical centering */
+  justify-content: center; /* horizontal centering */
+  width: 100%;
+}
+
+.brandLogo{
+  height: 160px;       /* half-size logo */
+  width: auto;
+  display: block;
+  object-fit: contain;
 }
 
 .card{

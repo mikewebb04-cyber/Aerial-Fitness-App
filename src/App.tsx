@@ -1,5 +1,5 @@
 
-
+import logo from "./assets/logo.jpeg";
 import { useEffect, useMemo, useState } from "react";
 
 type Discipline = "Pole" | "Hoop" | "Bungee" | "Silks" | "Other";
@@ -670,19 +670,40 @@ export default function App() {
     <>
       <div className="container">
         <header className="appbar">
-          <div className="title">Aerial Journey</div>
-          <div className="subtitle">
-            {tab === "sessions"
-              ? "Log sessions and track momentum"
-              : tab === "skills"
-                ? "Track skills by status (Learning → Achieved → Mastered)"
-                : "Multi-discipline goals with progress tracking"}
+          <div className="brand">
+            <img
+              src={logo}
+              alt="Logo"
+              className="brandLogo"
+              onError={(e) => {
+                console.warn("Logo failed to load:", (e.currentTarget as HTMLImageElement).src);
+              }}
+            />
           </div>
         </header>
 
         {/* ------------------------- SESSIONS TAB ------------------------- */}
         {tab === "sessions" && (
           <>
+                      {/* BOOK A SESSION (full width) */}
+            <a
+              href="https://goteamup.com/login/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btnPrimary"
+              style={{
+                width: "100%",
+                height: 48,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 12,
+                textDecoration: "none",
+              }}
+            >
+              BOOK A SESSION
+            </a>
+
             <div className="card">
               <h2 className="sectionTitle">Log a training session</h2>
 
