@@ -64,6 +64,11 @@ a { color: inherit; }
   margin: 0 -16px 16px;
 }
 
+.appbar{
+  border-bottom-left-radius: 18px;
+  border-bottom-right-radius: 18px;
+}
+
 .appbar .title{
   font-size: 18px;
   font-weight: 800;
@@ -255,4 +260,13 @@ a { color: inherit; }
   color: var(--text);
   border-color: color-mix(in srgb, var(--text) 18%, var(--border));
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.btn, .navBtn{
+  transition: transform 0.05s ease, filter 0.15s ease;
+}
+
+.btn:active, .navBtn:active{
+  transform: scale(0.99);
+  filter: brightness(0.98);
 }
